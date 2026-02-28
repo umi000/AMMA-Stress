@@ -30,7 +30,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create results dir
-        run: mkdir -p results
+        run: |
+          mkdir -p results
+          chmod 777 results
 
       - name: Run k6 ${{ matrix.test }}
         env:
