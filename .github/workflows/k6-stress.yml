@@ -1,0 +1,30 @@
+name: k6 Stress Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: k6 smoke (3 VUs, 15s)
+        run: |
+          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/smoke.js
+
+      - name: k6 load (50 VUs)
+        run: |
+          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load.js
+
+      - name: k6 load (500 VUs)
+        run: |
+          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-500.js
+
+      - name: k6 load (7000 VUs)
+        run: |
+          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-7000.js
