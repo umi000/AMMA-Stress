@@ -51,20 +51,33 @@ k6 run --env BASE_URL=https://your-api.com/api/v1 stress/load.js
 
 ## Pipeline
 
-Run from repo root, e.g.:
+**GitHub Actions:** [.github/workflows/k6-stress.yml](.github/workflows/k6-stress.yml)
 
-```yaml
-- run: k6 run stress/smoke.js
-- run: k6 run stress/load-7000.js
+- **Push/PR:** All 4 scripts run **in parallel** (smoke, load, load-500, load-7000). A **report** job then merges summaries and uploads **k6-stress-report** (HTML + JSON).
+- **Manual run:** Actions → **Run workflow** → choose **test_suite**: `all` or `smoke` / `load` / `load-500` / `load-7000` to run a single test or all.
+- Uses Docker image `grafana/k6`. Download **k6-stress-report** from the run to get `results/index.html` (all cases and metrics) and per-script JSON.
+
+To run the same locally (Docker):
+
+```bash
+docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/smoke.js
+docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load.js
+docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-500.js
+docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-7000.js
 ```
 
 ## Scripts
 
-| Script           | VUs    | Stages / duration      |
-|------------------|--------|-------------------------|
-| `stress/smoke.js` | 3      | 15s                     |
-| `stress/load.js`  | 10→50  | ~3.5 min                |
-| `stress/load-500.js`  | 100→500 | ~5 min             |
-| `stress/load-7000.js` | 1000→7000 | ~13 min (ramp + 5m hold) |
+| Script           | VUs    | Duration (approx) |
+|------------------|--------|-------------------|
+| `stress/smoke.js` | 3      | 10s               |
+| `stress/load.js`  | 10→50  | ~1.5 min          |
+| `stress/load-500.js`  | 100→500 | ~2 min        |
+| `stress/load-7000.js` | 1000→7000 | ~4.5 min   |
 
-All use GET-only endpoints (fighters, events, fights, relics, votes, etc.).
+All use GET-only endpoints. Thresholds are relaxed for pipeline (e.g. fail rate &lt; 20–25%) so flaky APIs don’t fail the run.
+
+## Run single or all in pipeline
+
+- **Push/PR:** All 4 tests run in parallel, then one combined HTML report is uploaded.
+- **Manual (Actions → Run workflow):** Choose **Run single test or all** → pick `all`, `smoke`, `load`, `load-500`, or `load-7000`. Single = one job; all = 4 parallel jobs.

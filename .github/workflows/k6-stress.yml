@@ -5,26 +5,81 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Run single test or all'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - load
+          - load-500
+          - load-7000
 
 jobs:
   stress:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [smoke, load, load-500, load-7000]
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == matrix.test
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: k6 smoke (3 VUs, 15s)
-        run: |
-          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/smoke.js
+      - name: Create results dir
+        run: mkdir -p results
 
-      - name: k6 load (50 VUs)
+      - name: Run k6 ${{ matrix.test }}
+        env:
+          K6_SUMMARY_PATH: /scripts/results/${{ matrix.test }}.json
         run: |
-          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load.js
+          case "${{ matrix.test }}" in
+            smoke)   script="smoke.js" ;;
+            load)    script="load.js" ;;
+            load-500) script="load-500.js" ;;
+            load-7000) script="load-7000.js" ;;
+            *) exit 1 ;;
+          esac
+          docker run --rm -v $PWD:/scripts -e K6_SUMMARY_PATH=/scripts/results/${{ matrix.test }}.json \
+            grafana/k6 run /scripts/stress/$script
 
-      - name: k6 load (500 VUs)
-        run: |
-          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-500.js
+      - name: Upload summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: summary-${{ matrix.test }}
+          path: results/${{ matrix.test }}.json
 
-      - name: k6 load (7000 VUs)
+  report:
+    runs-on: ubuntu-latest
+    needs: stress
+    if: always() && (needs.stress.result == 'success' || needs.stress.result == 'failure')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: summary-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Prepare results for report
         run: |
-          docker run --rm -v $PWD:/scripts grafana/k6 run /scripts/stress/load-7000.js
+          mkdir -p results
+          find artifacts -name "*.json" -exec sh -c 'cp "$1" results/$(basename "$1")' _ {} \;
+          ls -la results/
+
+      - name: Generate HTML report
+        run: node scripts/generate-report.js
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-stress-report
+          path: |
+            results/index.html
+            results/*.json

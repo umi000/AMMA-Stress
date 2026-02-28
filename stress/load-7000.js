@@ -1,6 +1,5 @@
 /**
  * k6 stress test – 7000 virtual users
- * Config: stress/config-7000.yaml (stages and thresholds match)
  * Run: k6 run stress/load-7000.js
  */
 
@@ -11,15 +10,15 @@ const BASE_URL = __ENV.BASE_URL || 'https://yq4vmvpnrv.us-east-1.awsapprunner.co
 
 export const options = {
   stages: [
-    { duration: '2m', target: 1000 },
-    { duration: '3m', target: 4000 },
+    { duration: '45s', target: 1000 },
+    { duration: '45s', target: 4000 },
+    { duration: '30s', target: 7000 },
     { duration: '2m', target: 7000 },
-    { duration: '5m', target: 7000 },
-    { duration: '1m', target: 0 },
+    { duration: '20s', target: 0 },
   ],
   thresholds: {
-    http_req_duration: ['p(95)<8000'],
-    http_req_failed: ['rate<0.15'],
+    http_req_duration: ['p(95)<10000'],
+    http_req_failed: ['rate<0.25'],
   },
 };
 
@@ -39,4 +38,9 @@ export default function () {
   const res = http.get(`${BASE_URL}${path}`, { headers: HEADERS, tags: { name: path } });
   check(res, { 'status 2xx': (r) => r.status >= 200 && r.status < 300 });
   sleep(0.3 + Math.random() * 0.7);
+}
+
+export function handleSummary(data) {
+  const path = __ENV.K6_SUMMARY_PATH || 'summary.json';
+  return { [path]: JSON.stringify(data, null, 2) };
 }

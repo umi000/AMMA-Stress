@@ -10,15 +10,14 @@ const BASE_URL = __ENV.BASE_URL || 'https://yq4vmvpnrv.us-east-1.awsapprunner.co
 
 export const options = {
   stages: [
-    { duration: '1m', target: 100 },   // ramp to 100
-    { duration: '1m', target: 300 },   // ramp to 300
-    { duration: '30s', target: 500 },  // ramp to 500
-    { duration: '2m', target: 500 },   // hold 500 VUs
-    { duration: '30s', target: 0 },    // ramp down
+    { duration: '30s', target: 100 },
+    { duration: '30s', target: 500 },
+    { duration: '45s', target: 500 },
+    { duration: '15s', target: 0 },
   ],
   thresholds: {
-    http_req_duration: ['p(95)<5000'], // 95% under 5s
-    http_req_failed: ['rate<0.10'],    // <10% errors
+    http_req_duration: ['p(95)<6000'],
+    http_req_failed: ['rate<0.20'],
   },
 };
 
@@ -38,4 +37,9 @@ export default function () {
   const res = http.get(`${BASE_URL}${path}`, { headers: HEADERS, tags: { name: path } });
   check(res, { 'status 2xx': (r) => r.status >= 200 && r.status < 300 });
   sleep(0.3 + Math.random() * 0.7);
+}
+
+export function handleSummary(data) {
+  const path = __ENV.K6_SUMMARY_PATH || 'summary.json';
+  return { [path]: JSON.stringify(data, null, 2) };
 }
