@@ -25,8 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [smoke, load, load-500, load-7000]
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == matrix.test
+        test: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite != 'all' && fromJSON(format('["{0}"]', github.event.inputs.test_suite)) || fromJSON('["smoke","load","load-500","load-7000"]') }}
     steps:
       - uses: actions/checkout@v4
 
