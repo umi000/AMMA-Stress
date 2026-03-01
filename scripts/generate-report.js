@@ -37,18 +37,33 @@ function formatMs(n) {
 function extractMetrics(filePath) {
   if (!fs.existsSync(filePath)) return null;
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    const metrics = data.metrics || {};
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(raw);
+    const metrics = data.metrics || data || {};
     const out = {};
-    const m = (name) => metrics[name] && metrics[name].values ? metrics[name].values : {};
+    const m = (name) => (metrics[name] && metrics[name].values ? metrics[name].values : {});
+    const failedMetric = metrics.http_req_failed || {};
+    const failedValues = failedMetric.values || failedMetric;
     out.http_reqs_count = getMetric(m('http_reqs'), 'count');
     out.http_reqs_rate = getMetric(m('http_reqs'), 'rate');
     out.http_req_duration_avg = getMetric(m('http_req_duration'), 'avg');
     out.http_req_duration_min = getMetric(m('http_req_duration'), 'min');
     out.http_req_duration_max = getMetric(m('http_req_duration'), 'max');
     out.http_req_duration_p95 = getMetric(m('http_req_duration'), 'p(95)') ?? getMetric(m('http_req_duration'), 'med');
-    out.http_req_failed_rate = getMetric(m('http_req_failed'), 'rate');
-    out.http_req_failed_count = getMetric(m('http_req_failed'), 'passes') ?? getMetric(m('http_req_failed'), 'fails');
+    out.http_req_failed_rate = getMetric(failedValues, 'rate');
+    out.http_req_failed_count = getMetric(failedValues, 'fails');
+    const passes = getMetric(failedValues, 'passes');
+    if (out.http_req_failed_rate == null && (out.http_req_failed_count != null || passes != null)) {
+      const fails = out.http_req_failed_count != null ? out.http_req_failed_count : 0;
+      const total = (passes != null ? passes : 0) + fails;
+      if (total > 0) out.http_req_failed_rate = fails / total;
+      if (out.http_req_failed_count == null && fails > 0) out.http_req_failed_count = fails;
+    }
+    if (out.http_req_failed_rate == null && out.http_req_failed_count != null && out.http_reqs_count != null && out.http_reqs_count > 0) {
+      out.http_req_failed_rate = out.http_req_failed_count / out.http_reqs_count;
+    }
+    if (out.http_req_failed_rate == null) out.http_req_failed_rate = failedMetric.rate ?? failedMetric.values?.rate;
+    if (out.http_req_failed_count == null) out.http_req_failed_count = failedMetric.values?.fails ?? failedMetric.fails;
     out.iterations = getMetric(m('iterations'), 'count');
     out.vus_max = getMetric(m('vus_max'), 'value') ?? getMetric(m('vus'), 'value');
     out.iteration_duration_avg = getMetric(m('iteration_duration'), 'avg');
@@ -76,7 +91,8 @@ function buildHtml() {
       <td>${formatMs(r.metrics && r.metrics.http_req_duration_p95)}</td>
       <td>${formatMs(r.metrics && r.metrics.http_req_duration_min)}</td>
       <td>${formatMs(r.metrics && r.metrics.http_req_duration_max)}</td>
-      <td>${r.metrics && r.metrics.http_req_failed_rate != null ? (r.metrics.http_req_failed_rate * 100).toFixed(2) + '%' : '—'}</td>
+      <td class="${r.metrics && (r.metrics.http_req_failed_rate > 0 || r.metrics.http_req_failed_count > 0) ? 'fail' : ''}">${r.metrics && r.metrics.http_req_failed_rate != null ? (r.metrics.http_req_failed_rate * 100).toFixed(2) + '%' : '—'}</td>
+      <td class="${r.metrics && (r.metrics.http_req_failed_count > 0) ? 'fail' : ''}">${formatNum(r.metrics && r.metrics.http_req_failed_count)}</td>
       <td>${formatNum(r.metrics && r.metrics.vus_max)}</td>
     </tr>`
   ).join('');
@@ -97,6 +113,7 @@ function buildHtml() {
     th { background: #334155; color: #f1f5f9; font-weight: 600; }
     tr:hover { background: #33415540; }
     .pass { color: #86efac; }
+    .fail { color: #fca5a5; font-weight: 600; }
     .fail { color: #fca5a5; }
     footer { margin-top: 24px; color: #64748b; font-size: 12px; }
   </style>
@@ -117,6 +134,7 @@ function buildHtml() {
         <th>Duration min</th>
         <th>Duration max</th>
         <th>Failed rate</th>
+        <th>Failed count</th>
         <th>VUs max</th>
       </tr>
     </thead>
@@ -131,5 +149,10 @@ function buildHtml() {
 if (!fs.existsSync(RESULTS_DIR)) {
   fs.mkdirSync(RESULTS_DIR, { recursive: true });
 }
-fs.writeFileSync(path.join(RESULTS_DIR, 'index.html'), buildHtml(), 'utf8');
-console.log('Report written to results/index.html');
+try {
+  fs.writeFileSync(path.join(RESULTS_DIR, 'index.html'), buildHtml(), 'utf8');
+  console.log('Report written to results/index.html');
+} catch (e) {
+  console.error('Report error:', e.message);
+  process.exit(1);
+}

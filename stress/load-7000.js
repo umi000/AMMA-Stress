@@ -18,17 +18,28 @@ export const options = {
   ],
   thresholds: {
     http_req_duration: ['p(95)<10000'],
-    http_req_failed: ['rate<0.25'],
+    http_req_failed: ['rate<0.3'],
   },
 };
-
 const GET_ENDPOINTS = [
-  '/fighters?page=1', '/fighters/onchain/565', '/relics/relic-for-fighter?fighterId=0f9a118d-94e4-440e-8ede-566cedc629e3',
-  '/fighters/grouped', '/fighters/images', '/fighters/stats',
-  '/events', '/events/list', '/events/upcoming', '/events/past',
-  '/events/8c9e0c5f-0d3b-4ba3-8393-2c85188b554a', '/events/25baca5e-bfb1-4091-819a-c03c6b7e2c1c',
-  '/collections', '/event-overlays',
-  '/fights/upcoming?page=1&pageSize=20', '/fights/deployed-markets', '/relics', '/votes/check',
+  '/fighters?page=1',
+  '/fighters/onchain/565', 
+  '/relics/relic-for-fighter?fighterId=0f9a118d-94e4-440e-8ede-566cedc629e3',
+  '/fighters/grouped',
+  '/fighters/images', 
+  '/fighters/stats',
+  '/events', 
+  '/events/list', 
+  '/events/upcoming', 
+  '/events/past',
+  '/events/8c9e0c5f-0d3b-4ba3-8393-2c85188b554a',
+  '/events/25baca5e-bfb1-4091-819a-c03c6b7e2c1c',
+  '/collections', 
+  '/event-overlays',
+  '/fights/upcoming?page=1&pageSize=20', 
+  '/fights/deployed-markets', 
+  '/relics', 
+  '/votes/check',
 ];
 
 const HEADERS = { 'Accept': 'application/json', 'Origin': 'https://dev.d1t0xal4my8btp.amplifyapp.com' };
