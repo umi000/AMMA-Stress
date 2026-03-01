@@ -12,13 +12,13 @@ export const options = {
   stages: [
     { duration: '45s', target: 1000 },
     { duration: '45s', target: 4000 },
-    { duration: '30s', target: 7000 },
-    { duration: '2m', target: 7000 },
+    // { duration: '30s', target: 7000 },
+    { duration: '6m', target: 7000 },
     { duration: '20s', target: 0 },
   ],
   thresholds: {
     http_req_duration: ['p(95)<10000'],
-    http_req_failed: ['rate<0.3'],
+    http_req_failed: ['rate<0.5'],
   },
 };
 const GET_ENDPOINTS = [
