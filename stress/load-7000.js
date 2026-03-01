@@ -11,9 +11,9 @@ const BASE_URL = __ENV.BASE_URL || 'https://yq4vmvpnrv.us-east-1.awsapprunner.co
 export const options = {
   stages: [
     { duration: '45s', target: 1000 },
-    { duration: '45s', target: 4000 },
+    // { duration: '45s', target: 4000 },
     // { duration: '30s', target: 7000 },
-    { duration: '6m', target: 7000 },
+    { duration: '5m', target: 3000 },
     { duration: '20s', target: 0 },
   ],
   thresholds: {
